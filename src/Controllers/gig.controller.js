@@ -32,42 +32,18 @@ const upload = multer({
 ]);
 
 const createGig = async (req, res, next) => {
-  upload(req, res, async (err) => {
-    if (err) {
-      return next(new ApiError(400, err.message));
-    }
-
     try {
       if (!req.user || !req.user.id) {
         return next(new ApiError(401, "Unauthorized: User not authenticated"));
       }
       const freelancerId = req.user.id;
-
       const {
         title, description, category, pricing, deliveryTime, revisionCount,
-        tags, requirements, faqs, packageDetails,
+        tags, requirements
       } = req.body;
 
-      // Validate required fields
       if (!title || !pricing || !deliveryTime) {
         return next(new ApiError(400, "Missing required fields: title, pricing, and deliveryTime are mandatory."));
-      }
-
-      // Parse JSON fields
-      const parsedPricing = JSON.parse(pricing);
-      const parsedTags = tags ? JSON.parse(tags) : [];
-      const parsedFaqs = faqs ? JSON.parse(faqs) : [];
-      const parsedPackageDetails = packageDetails ? JSON.parse(packageDetails) : [];
-
-      // Validate pricing
-      if (!Array.isArray(parsedPricing) || parsedPricing.length === 0) {
-        return next(new ApiError(400, "Pricing must be a non-empty array of objects."));
-      }
-
-      // Validate deliveryTime
-      const parsedDeliveryTime = parseInt(deliveryTime);
-      if (isNaN(parsedDeliveryTime) || parsedDeliveryTime <= 0) {
-        return next(new ApiError(400, "Delivery time must be a positive integer."));
       }
 
       const freelancerProfile = await prisma.freelancerProfile.findUnique({
@@ -77,26 +53,7 @@ const createGig = async (req, res, next) => {
         return next(new ApiError(404, "Freelancer profile not found. Create a profile first."));
       }
 
-      // Handle thumbnail and sample media
       const sampleMediaData = [];
-      
-      // Add thumbnail as a special sample media entry
-      if (req.files?.thumbnail?.[0]) {
-        sampleMediaData.push({
-          mediaUrl: `/uploads/${req.files.thumbnail[0].filename}`,
-          mediaType: req.files.thumbnail[0].mimetype.split("/")[1] === "mp4" ? "video" : "thumbnail", // Distinguish thumbnail
-        });
-      }
-
-      // Add other sample media
-      if (req.files?.sampleMedia) {
-        req.files.sampleMedia.forEach(file => {
-          sampleMediaData.push({
-            mediaUrl: `/uploads/${file.filename}`,
-            mediaType: file.mimetype.split("/")[1] === "mp4" ? "video" : "image",
-          });
-        });
-      }
 
       const gig = await prisma.gig.create({
         data: {
@@ -104,13 +61,11 @@ const createGig = async (req, res, next) => {
           title,
           description,
           category,
-          pricing: parsedPricing,
-          deliveryTime: parsedDeliveryTime,
-          revisionCount: revisionCount ? parseInt(revisionCount) : null,
-          tags: parsedTags,
+          pricing,
+          deliveryTime,
+          revisionCount,
+          tags,
           requirements,
-          faqs: parsedFaqs,
-          packageDetails: parsedPackageDetails,
           sampleMedia: { create: sampleMediaData }, // Create related sample media
         },
         include: { sampleMedia: true },
@@ -123,7 +78,6 @@ const createGig = async (req, res, next) => {
       console.error("Error creating gig:", error);
       return next(new ApiError(500, "Failed to create gig", error.message));
     }
-  });
 };
 
 const updateGig = async (req, res, next) => {
