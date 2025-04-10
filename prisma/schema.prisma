@@ -176,15 +176,13 @@ model Gig {
   title         String
   description   String?
   category      String?
-  pricing       Json
+  pricing       String
   deliveryTime  Int?
   revisionCount Int?
   status        GigStatus @default(ACTIVE)
   tags          String[]
   requirements  String?
   sampleMedia   GigSampleMedia[]
-  faqs          Json?
-  packageDetails Json?
   isFeatured    Boolean   @default(false)
   views         Int       @default(0)
   createdAt     DateTime  @default(now())
